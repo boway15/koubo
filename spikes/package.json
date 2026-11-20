@@ -1,0 +1,17 @@
+{
+  "name": "koubo-spikes",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node check-env.mjs",
+    "ds": "node deepseek-rewrite.mjs",
+    "ds:dry": "node deepseek-dryrun.mjs",
+    "route": "node route-dryrun.mjs",
+    "jimeng": "node jimeng-image2video.mjs",
+    "kling": "node kling-image2video.mjs",
+    "hailuo": "node hailuo-image2video.mjs",
+    "relay": "node relay-image2video.mjs",
+    "vision": "node vision-qc.mjs"
+  },
+  "engines": { "node": ">=18" }
+}

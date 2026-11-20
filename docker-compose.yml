@@ -1,0 +1,100 @@
+# 单机部署：db + s3 + migrate + api
+#
+# 启动：   docker compose up --build -d
+# 看状态： docker compose ps
+# 看日志： docker compose logs -f api
+#
+# 数据都在命名卷里（pgdata / s3data），down 不会丢；
+# 要彻底清空用 docker compose down -v。
+#
+# 对象存储用 RustFS（S3 兼容，MinIO 的替代镜像）。
+# 拿到 MinIO 镜像的环境，把 s3 服务换成 minio/minio 即可，
+# api 侧只用 S3_* 变量，代码不用动。
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-koubo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-koubo}
+      POSTGRES_DB: ${POSTGRES_DB:-koubo}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # 不映射端口：只有 api/migrate 通过 compose 网络访问。
+    # 本地 5432 常被别的 Postgres 占用，映射反而容易起不来。
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-koubo} -d ${POSTGRES_DB:-koubo}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  s3:
+    image: rustfs/rustfs:latest
+    environment:
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:-koubo}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:-koubo12345678}
+    volumes:
+      - s3data:/data
+    # 不映射宿主机端口：api 走 compose 内网 s3:9000。
+    # 本机 9000/9001 常被其它服务占用；要从宿主机测 S3 时用 docker compose exec api node scripts/storage-check.js。
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  # 迁移是独立的一次性任务：schema.sql 可重复执行，
+  # 所以每次 up 都跑一遍最省心（不用维护版本号表）。
+  migrate:
+    build: .
+    image: koubo-api:dev
+    command: ["node", "scripts/migrate.js"]
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-koubo}:${POSTGRES_PASSWORD:-koubo}@db:5432/${POSTGRES_DB:-koubo}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: .
+    image: koubo-api:dev
+    ports:
+      - "8787:8787"
+    environment:
+      PORT: 8787
+      LOCAL_TOKEN: ${LOCAL_TOKEN:-dev-token}
+      ORG_ID: ${ORG_ID:-00000000-0000-0000-0000-000000000001}
+
+      DATABASE_URL: postgres://${POSTGRES_USER:-koubo}:${POSTGRES_PASSWORD:-koubo}@db:5432/${POSTGRES_DB:-koubo}
+
+      STORAGE_DRIVER: minio
+      S3_ENDPOINT: http://s3:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-koubo}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-koubo12345678}
+      S3_BUCKET: ${S3_BUCKET:-koubo}
+      S3_REGION: ${S3_REGION:-us-east-1}
+
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      TTS_API_KEY: ${TTS_API_KEY:-}
+      VOLC_TTS_TOKEN: ${VOLC_TTS_TOKEN:-}
+      ARK_API_KEY: ${ARK_API_KEY:-}
+      KLING_ACCESS_KEY: ${KLING_ACCESS_KEY:-}
+      KLING_SECRET_KEY: ${KLING_SECRET_KEY:-}
+      HAILUO_API_KEY: ${HAILUO_API_KEY:-}
+      RELAY_API_KEY: ${RELAY_API_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      s3:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    stop_grace_period: 20s
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  s3data:

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>口播工作台 · 交互原型</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <div class="logo">口</div>
+      <button class="rbtn on" data-act="goto" data-hash="#/projects">
+        <span class="tip">项目</span>
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2.5 2.5h4v4h-4zM9.5 2.5h4v4h-4zM2.5 9.5h4v4h-4zM9.5 9.5h4v4h-4z"/></svg>
+      </button>
+      <button class="rbtn" data-act="goto" data-hash="#/new">
+        <span class="tip">新建口播单</span>
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+      </button>
+      <button class="rbtn" data-act="open-deliver">
+        <span class="tip">客户审阅页</span>
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.6 8S4.2 4 8 4s6.4 4 6.4 4S12 12 8 12 1.6 8 1.6 8zM8 6.2a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6z"/></svg>
+      </button>
+      <a class="rbtn" href="providers.html" title="供应商面板">
+        <span class="tip">供应商面板</span>
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 13.5v-4M6.5 13.5v-7M10.5 13.5v-10M14 13.5h-12"/></svg>
+      </a>
+      <button class="rbtn" data-act="toast" data-msg="模板库：二期功能">
+        <span class="tip">模板库 · 二期</span>
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2.5 3.5h11v9h-11zM2.5 6.5h11M6 6.5v6"/></svg>
+      </button>
+      <button class="rbtn" data-act="toast" data-msg="素材库：二期功能">
+        <span class="tip">素材库 · 二期</span>
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2.5 3.5h11v9h-11zM2.5 10.5l3-3 2.5 2.5 2-2 3.5 3.5"/></svg>
+      </button>
+      <div class="spacer"></div>
+      <button class="rbtn" data-act="toast" data-msg="设置：单租户版本，暂不需要">
+        <span class="tip">设置</span>
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 5.5h10M3 10.5h10M6 3.5v4M10.5 8.5v4"/></svg>
+      </button>
+      <div class="avatar">演示</div>
+    </aside>
+    <div class="main" id="main"></div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <div id="modal" class="hide"></div>
+  <div id="guide"></div>
+
+  <script src="api-client.js"></script>
+  <script src="data.js"></script>
+  <script src="broll.js"></script>
+  <script src="timeline.js"></script>
+  <script src="state.js"></script>
+  <script src="models.js"></script>
+  <script src="ui.js"></script>
+  <script src="panels1.js"></script>
+  <script src="panels2.js"></script>
+  <script src="live.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

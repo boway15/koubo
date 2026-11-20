@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>供应商面板 · 口播流水线</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="ops">
+  <div class="topbar">
+    <a class="btn ghost sm" href="index.html">返回工作台</a>
+    <span class="sep" style="color:var(--line2)">/</span>
+    <b>供应商面板</b>
+    <span class="grow"></span>
+    <button class="btn sm" id="reload" type="button">刷新</button>
+  </div>
+  <div class="ops-page">
+    <div id="banner" class="note" style="margin-bottom:14px">正在连接 API…</div>
+    <div id="board"></div>
+    <div class="ops-table">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>模型</th><th>类型</th><th>供应商</th><th>能力</th>
+            <th>单价</th><th>凭证</th><th>本单选用</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="rows"><tr><td colspan="8" class="muted">加载中…</td></tr></tbody>
+      </table>
+    </div>
+    <p class="tiny muted" style="margin-top:10px">没有字级时间戳的配音进不了正式候选。中转失败最多重试 1 次。本单选用保存在这台浏览器里，工作台同步读取。</p>
+  </div>
+  <script src="api-client.js"></script>
+  <script src="models.js"></script>
+  <script>
+    const $ = (s) => document.querySelector(s);
+
+    function caps(c) {
+      const out = [];
+      for (const [k, v] of Object.entries(c || {})) {
+        if (v === true) out.push(k);
+        else if (v === false) out.push(k + ":否");
+        else out.push(k + ":" + v);
+      }
+      return out.join(" · ") || "—";
+    }
+
+    function paint(live) {
+      const banner = $("#banner");
+      if (live.live) {
+        banner.className = "note";
+        banner.style.borderColor = "#B8D4C8";
+        banner.style.background = "#F2FAF6";
+        const t = window.ModelUI.slots.flatMap((s) => s.options.filter((o) => !o.virtual));
+        const ready = t.filter((m) => m.ready).length;
+        banner.innerHTML = `<div><b>已连接</b> · ${t.length} 个模型，${ready} 个凭证就绪。未配置的模型会在运行时降级，并写进产物来源。</div>`;
+      } else {
+        banner.className = "note";
+        banner.innerHTML = `<div><b>API 未连接</b>：${live.reason || "请先在 app/ 执行 npm run dev"}。下面是登记表，凭证状态为演示。</div>`;
+      }
+      $("#board").innerHTML = window.modelBoardHTML({ expandAll: true });
+      const rows = window.ModelUI.slots.flatMap((slot) =>
+        slot.options.filter((o) => !o.virtual).map((m) => ({ slot, m }))
+      );
+      $("#rows").innerHTML = rows.map(({ slot, m }) => {
+        const cur = window.currentModel(slot.id);
+        const on = cur && cur.model && (cur.model.id === m.id || (cur.model.virtual && m.ready && slot.id === "video"));
+        const picked = cur && cur.model && cur.model.id === m.id;
+        const cred = m.local ? '<span class="chip accent">本地</span>'
+          : m.ready ? '<span class="chip ok">已配置</span>'
+          : m.checked === false ? '<span class="chip ghost">未检测</span>'
+          : '<span class="chip warn">未配置</span>';
+        const use = picked
+          ? '<span class="chip accent">当前选用</span>'
+          : (cur && cur.model && cur.model.virtual && m.ready ? '<span class="chip ghost">轮转在内</span>' : "");
+        const btn = live.live
+          ? `<button class="btn sm" type="button" data-provider="${m.providerId}" data-next="${m.enabled ? "false" : "true"}">${m.enabled ? "禁用" : "启用"}</button>`
+          : `<button class="btn sm" type="button" disabled title="连上 API 后才能启用或禁用">禁用</button>`;
+        return `<tr style="${on ? "background:#FCFAF6" : ""}">
+          <td><b>${m.name}</b><div class="mono tiny">${m.id}</div></td>
+          <td>${slot.label}</td>
+          <td>${m.provider}</td>
+          <td class="muted">${caps(m.caps)}</td>
+          <td class="mono">${m.price || "—"}</td>
+          <td>${cred}</td>
+          <td>${use}</td>
+          <td>${btn}</td>
+        </tr>`;
+      }).join("") || '<tr><td colspan="8" class="muted">无模型</td></tr>';
+
+      document.querySelectorAll("button[data-provider]").forEach((b) => {
+        b.onclick = async () => {
+          await fetch((window.KOUBO_API || "http://127.0.0.1:8787") + "/api/providers/" + b.dataset.provider + "/enabled", {
+            method: "POST",
+            headers: {
+              Authorization: "Bearer " + (localStorage.getItem("koubo_token") || "dev-token"),
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ enabled: b.dataset.next === "true" })
+          });
+          load();
+        };
+      });
+    }
+
+    async function load() {
+      const live = await window.kouboProbe();
+      try {
+        await window.refreshModels(!!live.live);
+      } catch (e) {
+        live.live = false;
+        live.reason = e.message || live.reason;
+        await window.refreshModels(false);
+      }
+      paint(live);
+    }
+
+    document.addEventListener("click", (e) => {
+      const el = e.target.closest("[data-act='pick-model']");
+      if (!el) return;
+      e.preventDefault();
+      window.selectModel(el.dataset.slot, el.dataset.model);
+      const live = { live: window.ModelUI.live, reason: "" };
+      paint(live);
+    });
+
+    $("#reload").onclick = load;
+    load();
+  </script>
+</body>
+</html>
